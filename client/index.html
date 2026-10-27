@@ -112,7 +112,10 @@
         <span class="badge emit">⬆ emit</span> este cliente PEDIU algo ao servidor ·
         <span class="badge on">⬇ on</span> este cliente ESCUTOU um evento e reagiu
       </p>
-      <!-- ETAPA 7 (dupla): cole aqui os contadores por evento -->
+      <!-- Contadores por evento (dupla): quantas vezes cada evento já ocorreu neste cliente -->
+      <div class="contadores">
+        <span v-for="(n, nome) in contadores" class="chip">{{ nome }} ×{{ n }}</span>
+      </div>
       <label><input type="checkbox" v-model="ocultarProducao"> ocultar recurso.produzido e pescado.salgado (são muito frequentes)</label>
       <ul>
         <li v-for="e in eventosVisiveis" :class="e.tipo">

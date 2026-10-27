@@ -1,25 +1,31 @@
-ASSETS DA VILA
-==============
+ASSETS DO PORTO DE PESCA
+========================
 
-Arte original criada para este trabalho (uso livre nos trabalhos da disciplina).
+Base: arte original do kit da disciplina (grama, caminho, água, árvores, casa e canteiro).
+Peças do porto (areia, píer, barcos, salga, cais, boias etc.): arte original criada para
+este trabalho, em pixel art, por Guilherme Losi e João Vitor Vergilio. Uso livre.
 
-tileset-vila.png   peças do cenário, 16x16 px (64 peças, 16 por linha)
-sprites-vila.png   casa (quadro 0) e canteiro de obras (quadro 1), 32x32 px
+tileset-vila.png   peças do cenário, 16x16 px (80 peças, 16 por linha)
+sprites-vila.png   32x32 px: 0 casa | 1 canteiro de obras | 2 barco | 3 salga | 4 cais
 vila.json          o mapa (formato Tiled), 18 x 9 peças. Abra no Tiled para editar.
 
 PEÇAS DO TILESET (número mostrado no Tiled)
   0, 1, 2     grama (lisa, com tufos, com flores)
   8 a 23      CAMINHO. Número = 8 + soma dos lados em que há mais caminho:
               Norte=1, Leste=2, Sul=4, Oeste=8
-              ex.: 8 = caminho isolado | 18 = reto horizontal (L+O) |
-                   13 = reto vertical (N+S) | 23 = cruzamento
-  24 a 39     ÁGUA. Mesma regra: 24 + soma dos lados com mais água
-              ex.: 39 = água por dentro da lagoa | 24 = poça isolada
+  24 a 39     ÁGUA com margem de grama. Mesma regra: 24 + soma dos lados com mais água
   40 árvore   41 arbusto   42 pedra   43 toco
   44 toras    45 horta de cenoura   46 horta de trigo   47 cerca
+  --- porto ---
+  48 areia    49 areia com conchas  50 tábuas do píer   51 poste de amarração
+  52 caixa de peixe   53 barril de sal   54 rede de pesca   55 boia
+  56 pedra na água    57 âncora
+  64 a 79     ÁGUA com margem de AREIA: 64 + soma dos lados com mais água
 
 CAMADAS DO MAPA
-  chao         grama, caminho e água (todas as células preenchidas)
-  decoracao    árvores, pedras, hortas, cerca (células vazias onde não há nada)
-  pontos       (objetos) lote1 a lote6 = onde aparecem obras e casas
-                          acampamento = de onde sobem os "+10"
+  chao         grama, caminho, areia, água e píer
+  decoracao    árvores, caixas, barris, redes, boias (vazio onde não há nada)
+  pontos       (objetos) salga1..4 = onde surgem as salgas (na grama)
+                          cais1..3  = onde surgem os cais (na beira da praia)
+                          barco1..5 = onde surgem os barcos (no mar)
+                          peixaria  = de onde sobem os "+10 🐟"

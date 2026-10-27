@@ -136,10 +136,10 @@
 
 <script>
   // =====================================================================
-  //  A VILA DESENHADA (Phaser) - já vem pronta, você NÃO precisa alterar.
-  //  O cenário é um MAPA (Tilemap) feito no Tiled: client/assets/vila.json.
-  //  Cada método abaixo reage a UM evento do servidor.
-  //  Seu trabalho é chamar o método certo dentro de cada socket.on(...).
+  //  O PORTO DESENHADO (Phaser) - adaptado da cena do kit.
+  //  O cenário é um MAPA (Tilemap) do Tiled: client/assets/vila.json.
+  //  Cada método abaixo reage a UM evento do servidor; quem chama é o
+  //  ouvir(...) correspondente, lá embaixo na aplicação.
   // =====================================================================
   function criarJogo() {
     let cena = null;          // a cena, quando já estiver pronta
@@ -147,12 +147,16 @@
     const fila = [];          // chamadas feitas antes da cena existir
     const chamar = (nome, ...args) => (cena ? cena[nome](...args) : fila.push([nome, args]));
 
-    class VilaScene extends Phaser.Scene {
-      constructor() { super("vila"); }
+    // quadro da folha de sprites de cada construção pronta (0 casa e 1 canteiro vêm do kit)
+    const QUADRO = { barco: 2, salga: 3, cais: 4 };
+    const NOME = { barco: "⛵ Barco", salga: "🧂 Salga", cais: "⚓ Cais" };
+
+    class PortoScene extends Phaser.Scene {
+      constructor() { super("porto"); }
 
       preload() {
         this.load.image("tiles", "assets/tileset-vila.png");                 // peças do cenário
-        this.load.spritesheet("sprites", "assets/sprites-vila.png",          // casa e canteiro
+        this.load.spritesheet("sprites", "assets/sprites-vila.png",          // canteiro, barco, salga, cais
           { frameWidth: 32, frameHeight: 32 });
         this.load.tilemapTiledJSON("mapa", "assets/vila.json");              // o mapa
       }
@@ -164,85 +168,104 @@
         mapa.createLayer("chao", tileset);
         mapa.createLayer("decoracao", tileset);
 
-        // 2) pontos marcados no mapa: onde ficam as obras e o acampamento de lenha
+        // 2) pontos do mapa: vagas de cada tipo (salga1.., cais1.., barco1..) e a peixaria
         const pontos = mapa.getObjectLayer("pontos").objects;
-        this.lotes = pontos.filter((p) => p.name.startsWith("lote"))
+        const vagasDe = (prefixo) => pontos.filter((p) => p.name.startsWith(prefixo))
           .sort((a, b) => a.name.localeCompare(b.name, "pt", { numeric: true }));
-        this.acampamento = pontos.find((p) => p.name === "acampamento");
+        this.vagas = { barco: vagasDe("barco"), salga: vagasDe("salga"), cais: vagasDe("cais") };
+        this.peixaria = pontos.find((p) => p.name === "peixaria");
 
         // 3) câmera: o mapa é pequeno (pixel art), então damos zoom 2x
         this.cameras.main.setZoom(2).centerOn(mapa.widthInPixels / 2, mapa.heightInPixels / 2);
         this.larg = mapa.widthInPixels;
         this.alt = mapa.heightInPixels;
 
-        this.obras = [];      // obras em andamento (a primeira a começar é a primeira a terminar)
-        this.usados = 0;      // quantos lotes já foram usados
-        this.faixa = this.add.text(this.larg / 2, 9, "⏳ Aguardando o Mestre", {
-          fontSize: "8px", color: "#ffffff", backgroundColor: "#00000099",
+        this.obras = {};      // obras em andamento, pelo id que o servidor deu
+        this.faixa = this.add.text(this.larg / 2, 9, "⏳ Aguardando o Mestre do porto", {
+          fontSize: "8px", color: "#ffffff", backgroundColor: "#0d3b6699",
           padding: { x: 5, y: 2 }, resolution: 2,
-        }).setOrigin(0.5).setDepth(10);
+        }).setOrigin(0.5).setDepth(1000);
 
         cena = this;
         fila.splice(0).forEach(([nome, args]) => this[nome](...args));
       }
 
       // ----- apoio -----
-      lote(i) { return this.lotes[i % this.lotes.length]; }
-      criarCasa(x, y) {
-        const casa = this.add.sprite(x, y, "sprites", 0);
-        this.tweens.add({ targets: casa, scale: { from: 0.3, to: 1 }, duration: 400, ease: "Back.Out" });
+      posicao(tipo, vaga) {   // vaga além dos pontos do mapa: repete o ponto com um deslocamento
+        const lista = this.vagas[tipo];
+        const p = lista[vaga % lista.length];
+        const volta = Math.floor(vaga / lista.length);
+        return { x: p.x + volta * 9, y: p.y - volta * 5 };
       }
-      criarObra(duracao) {
-        const { x, y } = this.lote(this.usados++);
-        const canteiro = this.add.sprite(x, y, "sprites", 1);
-        const fundo = this.add.rectangle(x - 10, y + 16, 20, 3, 0x333333).setOrigin(0, 0.5);
-        const barra = this.add.rectangle(x - 10, y + 16, 20, 3, 0xffd54a).setOrigin(0, 0.5);
-        barra.scaleX = 0;
-        this.tweens.add({ targets: barra, scaleX: 1, duration: duracao });
-        this.obras.push({ canteiro, fundo, barra, x, y });
+      criarPredio(tipo, vaga, animar) {
+        const { x, y } = this.posicao(tipo, vaga);
+        const s = this.add.sprite(x, y, "sprites", QUADRO[tipo]).setDepth(y);
+        if (animar) this.tweens.add({ targets: s, scale: { from: 0.3, to: 1 }, duration: 400, ease: "Back.Out" });
+        if (tipo === "barco") {   // o barco balança na água
+          this.tweens.add({ targets: s, y: y + 1.5, angle: 2, duration: 1100 + vaga * 90,
+            yoyo: true, repeat: -1, ease: "Sine.InOut" });
+        }
+        return s;
+      }
+      criarObra(id, tipo, vaga, falta, total) {
+        const { x, y } = this.posicao(tipo, vaga);
+        const canteiro = this.add.sprite(x, y, "sprites", 1).setDepth(y);
+        const fundo = this.add.rectangle(x - 10, y + 16, 20, 3, 0x333333).setOrigin(0, 0.5).setDepth(y + 1);
+        const barra = this.add.rectangle(x - 10, y + 16, 20, 3, 0xffd54a).setOrigin(0, 0.5).setDepth(y + 2);
+        barra.scaleX = total ? 1 - falta / total : 0;
+        this.tweens.add({ targets: barra, scaleX: 1, duration: falta });
+        this.obras[id] = { canteiro, fundo, barra, tipo, vaga };
       }
       flutuar(texto, x, y, cor) {
         const t = this.add.text(x, y, texto, {
           fontSize: "8px", color: cor, fontStyle: "bold", stroke: "#ffffff",
           strokeThickness: 2, resolution: 2,
-        }).setOrigin(0.5).setDepth(8);
-        this.tweens.add({ targets: t, y: y - 16, alpha: 0, duration: 1400, onComplete: () => t.destroy() });
+        }).setOrigin(0.5).setDepth(900);
+        this.tweens.add({ targets: t, y: y - 16, alpha: 0, duration: 1600, onComplete: () => t.destroy() });
       }
 
       // ----- um método para cada evento do servidor -----
       mostrarEstado(estado) {                 // estado.sincronizado
-        for (let i = 0; i < estado.concluidas; i++) {
-          const p = this.lote(this.usados++);
-          this.criarCasa(p.x, p.y);
-        }
-        for (let i = 0; i < estado.em_obra; i++) this.criarObra(estado.tempo_obra * 1000);
+        estado.predios.forEach((p) => this.criarPredio(p.tipo, p.vaga, false));
+        const total = (t) => estado.catalogo[t].tempo * 1000;
+        estado.obras.forEach((o) => this.criarObra(o.id, o.tipo, o.vaga, o.restante * 1000, total(o.tipo)));
         if (estado.fase === "aberta") this.vilaIniciada();
         if (estado.fase === "encerrada") this.vilaEncerrada();
       }
       vilaIniciada() {                        // vila.iniciada
-        this.faixa.setText("☀️ Temporada aberta");
+        this.faixa.setText("☀️ Temporada de pesca aberta");
       }
-      obraIniciada(estado) {                  // construcao.iniciada
-        this.criarObra(estado.tempo_obra * 1000);
-        this.flutuar("-" + estado.custo + " 🪵", this.acampamento.x, this.acampamento.y, "#b00020");
+      obraIniciada(d) {                       // construcao.iniciada
+        const tempo = d.estado.catalogo[d.tipo].tempo * 1000;
+        this.criarObra(d.obra, d.tipo, d.vaga, tempo, tempo);
+        const moeda = d.recurso === "peixe" ? " 🐟" : " 🧂";
+        this.flutuar("-" + d.custo + moeda, this.peixaria.x, this.peixaria.y, "#b00020");
       }
-      obraConcluida(estado) {                 // construcao.concluida
-        const obra = this.obras.shift();
+      obraConcluida(d) {                      // construcao.concluida
+        const obra = this.obras[d.obra];
         if (!obra) return;
+        delete this.obras[d.obra];
         obra.canteiro.destroy(); obra.fundo.destroy(); obra.barra.destroy();
-        this.criarCasa(obra.x, obra.y);
-        this.flutuar("🏠 Obra concluída!", obra.x, obra.y - 18, "#1b5e20");
+        const s = this.criarPredio(obra.tipo, obra.vaga, true);
+        this.flutuar(NOME[obra.tipo] + " pronto!", s.x, s.y - 18, "#1b5e20");
       }
-      recursoProduzido(estado) {              // recurso.produzido
-        this.flutuar("+" + estado.producao + " 🪵", this.acampamento.x, this.acampamento.y, "#1b5e20");
+      recursoProduzido(d) {                   // recurso.produzido (pescaria)
+        this.flutuar("+" + d.pescado + " 🐟", this.peixaria.x, this.peixaria.y, "#0d47a1");
+      }
+      pescadoSalgado(d) {                     // pescado.salgado
+        const p = this.vagas.salga[0];
+        this.flutuar("+" + d.qtd + " 🧂", p.x, p.y - 10, "#37474f");
+      }
+      pescadoEstragado(d) {                   // pescado.estragado
+        this.flutuar("🪰 " + d.qtd + " estragaram", this.peixaria.x + 26, this.peixaria.y + 6, "#6d4c41");
       }
       recusado(motivo) {                      // operacao.recusada (só quem pediu)
         this.cameras.main.shake(180, 0.006);
         this.flutuar("✋ " + motivo, this.larg / 2, this.alt - 28, "#b00020");
       }
       vilaEncerrada() {                       // vila.encerrada
-        this.faixa.setText("🌙 Temporada encerrada");
-        this.add.rectangle(this.larg / 2, this.alt / 2, this.larg, this.alt, 0x000033, 0.35).setDepth(5);
+        this.faixa.setText("🌙 Temporada de pesca encerrada");
+        this.add.rectangle(this.larg / 2, this.alt / 2, this.larg, this.alt, 0x000033, 0.35).setDepth(950);
       }
     }
 
@@ -251,7 +274,7 @@
         if (partida) return;
         partida = new Phaser.Game({
           type: Phaser.AUTO, parent: idContainer, width: 576, height: 288,
-          pixelArt: true, backgroundColor: "#7bb661", scene: VilaScene, audio: { noAudio: true },
+          pixelArt: true, backgroundColor: "#4a90c8", scene: PortoScene, audio: { noAudio: true },
         });
       },
       mostrarEstado: (...a) => chamar("mostrarEstado", ...a),
@@ -259,6 +282,8 @@
       obraIniciada: (...a) => chamar("obraIniciada", ...a),
       obraConcluida: (...a) => chamar("obraConcluida", ...a),
       recursoProduzido: (...a) => chamar("recursoProduzido", ...a),
+      pescadoSalgado: (...a) => chamar("pescadoSalgado", ...a),
+      pescadoEstragado: (...a) => chamar("pescadoEstragado", ...a),
       recusado: (...a) => chamar("recusado", ...a),
       vilaEncerrada: (...a) => chamar("vilaEncerrada", ...a),
     };

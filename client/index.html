@@ -432,7 +432,7 @@
         ouvir("construcao.concluida", "troca o canteiro pela construção pronta", (d) => {
           atualizar(d);
           const c = estado.catalogo[d.tipo];
-          avisar(c.emoji + " " + c.nome + " de " + d.por + " concluído! " + d.efeito + ".", "ok");
+          avisar("🏁 Obra de " + d.por + " concluída: " + c.emoji + " " + c.nome + " (" + d.efeito + ")", "ok");
           jogo.obraConcluida(d);
         });
 

@@ -2,8 +2,8 @@ ASSETS DO PORTO DE PESCA
 ========================
 
 Base: arte original do kit da disciplina (grama, caminho, água, árvores, casa e canteiro).
-Peças do porto (areia, píer, barcos, salga, cais, boias etc.): arte original criada para
-este trabalho, em pixel art, por Guilherme Losi e João Vitor Vergilio. Uso livre.
+Peças do porto (areia, píer, barcos, salga, cais, boias etc.): arte original em pixel art
+criada para este trabalho (desenhada por script, com apoio de IA). Uso livre.
 
 tileset-vila.png   peças do cenário, 16x16 px (80 peças, 16 por linha)
 sprites-vila.png   32x32 px: 0 casa | 1 canteiro de obras | 2 barco | 3 salga | 4 cais

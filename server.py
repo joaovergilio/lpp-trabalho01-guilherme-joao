@@ -100,3 +100,25 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid, *args):
     jogadores.pop(sid, None)
+
+
+async def recusar(sid, motivo, causa):
+    """A recusa também é um EVENTO, mas vai só para quem pediu (to=sid)."""
+    await sio.emit("operacao.recusada", {"motivo": motivo, "causa": causa}, to=sid)
+
+
+# ---------------------------------------------------------------------
+#  Mestre abre a temporada de pesca
+# ---------------------------------------------------------------------
+@sio.on("vila.abertura_solicitada")          # escuta o PEDIDO do Mestre
+async def abrir_vila(sid, dados=None):
+    pedido = "vila.abertura_solicitada"
+    if jogadores[sid]["papel"] != "mestre":
+        await recusar(sid, "Só o Mestre do porto pode abrir a temporada", pedido)
+        return
+    if estado["fase"] != "aguardando":
+        await recusar(sid, "A temporada de pesca já foi aberta", pedido)
+        return
+    estado["fase"] = "aberta"
+    # FATO para todos: a temporada começou
+    await sio.emit("vila.iniciada", fato(pedido))

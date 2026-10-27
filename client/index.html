@@ -359,11 +359,19 @@
           atualizar(d);
           jogo.mostrarEstado(d.estado);
         });
+
+        // Todos recebem quando o Mestre abre a temporada (causa: vila.abertura_solicitada).
+        ouvir("vila.iniciada", "muda a faixa para temporada de pesca aberta", (d) => {
+          atualizar(d);
+          avisar("☀️ A temporada de pesca começou! Os barcos saíram para o mar.", "ok");
+          jogo.vilaIniciada();
+        });
       }
 
       // ===== PEDIDOS (emit): o cliente PEDE algo ao servidor =====
       function abrirVila() {
-        // ETAPA 2
+        // Pedido do Mestre: quem decide se pode abrir é o servidor.
+        pedir("vila.abertura_solicitada");
       }
       function construir(tipo) {
         // ETAPA 3

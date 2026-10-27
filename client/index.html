@@ -3,39 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Vila em Tempo Real</title>
+  <title>Porto de Pesca em Tempo Real</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 580px; margin: 24px auto; padding: 0 12px; }
-    .cartao, .painel { border: 1px solid #ccc; border-radius: 8px; padding: 12px; margin: 12px 0; }
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 12px; color: #1d2b36; background: #f4f8fb; }
+    h1 { color: #0d3b66; margin: 8px 0; }
+    .cartao, .painel { border: 1px solid #c6d4df; border-radius: 8px; padding: 12px; margin: 12px 0; background: #fff; }
     .painel p { margin: 6px 0; }
-    button { padding: 8px 14px; margin-right: 6px; border-radius: 6px; border: 1px solid #888; cursor: pointer; }
+    button { padding: 8px 14px; margin: 0 6px 6px 0; border-radius: 6px; border: 1px solid #5b7a93; background: #fff; cursor: pointer; }
+    button:hover { background: #e6f0f7; }
     input { padding: 8px; margin-bottom: 8px; width: 100%; box-sizing: border-box; }
     .avisos { list-style: none; padding: 0; }
-    .avisos li { padding: 6px 10px; margin: 4px 0; border-radius: 6px; background: #eef; }
-    .avisos li.ok { background: #dfd; }
-    .avisos li.erro { background: #fdd; }
+    .avisos li { padding: 6px 10px; margin: 4px 0; border-radius: 6px; background: #e8eefc; }
+    .avisos li.ok { background: #dff3df; }
+    .avisos li.erro { background: #fbdcdc; }
+    .avisos li.alerta { background: #fdebd0; }
     #jogo { margin: 12px 0; border-radius: 8px; overflow: hidden; line-height: 0; }
     #jogo canvas { width: 100% !important; height: auto !important; image-rendering: pixelated; }
-    .eventos { border: 1px solid #ccc; border-radius: 8px; padding: 10px; margin: 12px 0; background: #fafafa; }
+    /* lotes de peixe fresco: a barra encolhe até o prazo (só CSS, o cliente não conta o tempo) */
+    .lotes { font-size: 13px; margin-top: 8px; }
+    .lote { display: inline-flex; align-items: center; gap: 4px; margin: 4px 8px 0 0; padding: 2px 6px; border: 1px solid #c6d4df; border-radius: 6px; }
+    .validade { display: inline-block; width: 40px; height: 5px; background: #e3e3e3; border-radius: 3px; overflow: hidden; }
+    .validade .barra { display: block; height: 100%; transform-origin: left; animation-name: vencer; animation-timing-function: linear; animation-fill-mode: forwards; }
+    .lote.parado .barra { animation-play-state: paused; }
+    @keyframes vencer { from { transform: scaleX(1); background: #2e7d32; } 70% { background: #f9a825; } to { transform: scaleX(0); background: #c62828; } }
+    .eventos { border: 1px solid #c6d4df; border-radius: 8px; padding: 10px; margin: 12px 0; background: #fafcfd; }
     .eventos h2 { margin: 0 0 6px; font-size: 16px; }
     .eventos .legenda { font-size: 12px; margin: 4px 0 8px; }
     .eventos label { font-size: 12px; display: block; margin-bottom: 6px; }
     .eventos input { width: auto; margin: 0 6px 0 0; }
-    .eventos ul { list-style: none; padding: 0; margin: 0; max-height: 280px; overflow-y: auto;
+    .eventos ul { list-style: none; padding: 0; margin: 0; max-height: 320px; overflow-y: auto;
                   font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
     .eventos li { padding: 4px 8px; margin: 4px 0; border-left: 4px solid #999; background: #fff; }
     .eventos li.pedido { border-color: #1976d2; }
     .eventos li.fato { border-color: #2e7d32; }
     .eventos li.recusa { border-color: #c62828; }
+    .eventos li.alerta { border-color: #ef6c00; }
     .eventos .causa, .eventos .dados { color: #666; }
     .eventos .reacao { color: #1b5e20; }
     .eventos .hora { color: #888; }
     .eventos .vazio { font-size: 12px; color: #888; }
+    .vazio { color: #888; }
     .badge { display: inline-block; padding: 0 6px; border-radius: 4px; color: #fff; font-size: 11px; margin-right: 6px; }
     .badge.emit { background: #1976d2; }
     .badge.on { background: #2e7d32; }
-    .chip { display: inline-block; background: #eee; border-radius: 10px; padding: 1px 8px; margin: 0 4px 4px 0; font-size: 11px; }
-    footer { margin-top: 32px; font-size: 13px; color: #666; }
+    .contadores { margin-bottom: 6px; }
+    .chip { display: inline-block; background: #e6edf3; border-radius: 10px; padding: 1px 8px; margin: 0 4px 4px 0; font-size: 11px; }
+    footer { margin-top: 32px; font-size: 13px; color: #666; border-top: 1px solid #c6d4df; padding-top: 8px; }
   </style>
 </head>
 <body>
@@ -43,33 +56,49 @@
 
   <!-- Tela de entrada -->
   <section v-if="!conectado" class="cartao">
-    <h1>🏘️ Vila em Tempo Real</h1>
+    <h1>⚓ Porto de Pesca em Tempo Real</h1>
     <input v-model="nome" placeholder="Seu nome">
-    <button @click="entrar('mestre')">Entrar como Mestre</button>
-    <button @click="entrar('jogador')">Entrar como Jogador</button>
+    <button @click="entrar('mestre')">Entrar como Mestre do porto</button>
+    <button @click="entrar('jogador')">Entrar como Pescador</button>
   </section>
 
-  <!-- Tela da vila -->
+  <!-- Tela do porto -->
   <main v-else>
-    <h1>🏘️ Vila</h1>
-    <p>{{ papel }}: <strong>{{ nome || "Anônimo" }}</strong> · Temporada: <strong>{{ estado.fase }}</strong></p>
+    <h1>⚓ Porto de Pesca</h1>
+    <p>{{ papel === 'mestre' ? 'Mestre do porto' : 'Pescador' }}: <strong>{{ nome || "Anônimo" }}</strong>
+       · Temporada de pesca: <strong>{{ estado.fase }}</strong></p>
 
-    <!-- A vila desenhada pelo Phaser aparece aqui -->
+    <!-- O porto desenhado pelo Phaser aparece aqui -->
     <div id="jogo"></div>
 
     <section class="painel">
-      <p>🪵 Toras: <strong>{{ estado.toras }}</strong> (+{{ porMinuto }}/min)</p>
-      <p>👷 Trabalhadores: {{ estado.trabalhadores }}/{{ estado.limite }}
-        <progress :value="estado.trabalhadores" :max="estado.limite"></progress></p>
-      <p>🏠 Construções: {{ estado.concluidas }} concluídas, {{ estado.em_obra }} em obra</p>
+      <p>🐟 Peixe fresco: <strong>{{ estado.peixe }}</strong> (+{{ porMinuto }}/min)</p>
+      <p>🧂 Peixe salgado: <strong>{{ estado.salgado }}</strong> (as salgas salgam {{ estado.salga_por_ciclo }} por pescaria)</p>
+      <p>🪰 Peixes estragados: <strong>{{ estado.estragados }}</strong></p>
+      <p>👷 Pescadores ocupados: {{ estado.pescadores }}/{{ estado.limite }}
+        <progress :value="estado.pescadores" :max="estado.limite"></progress></p>
+      <p>🏗️ Construções: ⛵ {{ estado.concluidas.barco }} · 🧂 {{ estado.concluidas.salga }} · ⚓ {{ estado.concluidas.cais }}
+        concluídas, {{ estado.em_obra }} em obra</p>
+      <div class="lotes">
+        Lotes de peixe fresco (estragam {{ estado.prazo }} s depois de chegar, se não forem salgados):<br>
+        <span v-for="l in estado.lotes" :key="l.id" class="lote" :class="{ parado: estado.fase !== 'aberta' }"
+              :title="'lote ' + l.id">
+          🐟 {{ l.qtd }} <span class="validade"><span class="barra" :style="estiloLote(l)"></span></span>
+        </span>
+        <span v-if="!estado.lotes.length" class="vazio">nenhum lote no cais</span>
+      </div>
     </section>
 
     <section>
       <template v-if="papel === 'mestre'">
-        <button @click="abrirVila">Abrir temporada</button>
-        <button @click="encerrarVila">Encerrar temporada</button>
+        <button @click="abrirVila">☀️ Abrir temporada de pesca</button>
+        <button @click="encerrarVila">🌙 Encerrar temporada</button>
       </template>
-      <button v-else @click="construir">🔨 Construir (custo {{ estado.custo }} toras)</button>
+      <template v-else>
+        <button v-for="(c, tipo) in estado.catalogo" :key="tipo" @click="construir(tipo)" :title="c.efeito">
+          {{ c.emoji }} Construir {{ c.nome }} ({{ c.custo }} {{ c.recurso === 'peixe' ? '🐟' : '🧂' }}, {{ c.tempo }} s)
+        </button>
+      </template>
     </section>
 
     <ul class="avisos">
@@ -84,7 +113,7 @@
         <span class="badge on">⬇ on</span> este cliente ESCUTOU um evento e reagiu
       </p>
       <!-- ETAPA 7 (dupla): cole aqui os contadores por evento -->
-      <label><input type="checkbox" v-model="ocultarProducao"> ocultar recurso.produzido (é muito frequente)</label>
+      <label><input type="checkbox" v-model="ocultarProducao"> ocultar recurso.produzido e pescado.salgado (são muito frequentes)</label>
       <ul>
         <li v-for="e in eventosVisiveis" :class="e.tipo">
           <span class="badge" :class="e.sentido === 'enviado' ? 'emit' : 'on'">{{ e.sentido === 'enviado' ? '⬆ emit' : '⬇ on' }}</span>
@@ -98,7 +127,7 @@
     </section>
   </main>
 
-  <footer>Desenvolvido por: [Nome do(a) Aluno(a)]</footer>
+  <footer>Desenvolvido por: Guilherme Losi e João Vitor Vergilio · LPP 2026/2 · UNIDAVI</footer>
 </div>
 
 <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.js"></script>
@@ -238,7 +267,9 @@
 
 <script>
   // =====================================================================
-  //  A APLICAÇÃO (Vue + Socket.IO) - é aqui que você trabalha.
+  //  A APLICAÇÃO (Vue + Socket.IO)
+  //  Regra de ouro: o cliente NUNCA altera o estado por conta própria.
+  //  Ele só PEDE (pedir -> emit) e REAGE aos fatos do servidor (ouvir -> on).
   // =====================================================================
   const { createApp, ref, reactive, computed, nextTick } = Vue;
 
@@ -248,16 +279,19 @@
       const papel = ref("");
       const conectado = ref(false);
       const estado = reactive({
-        fase: "aguardando", toras: 0, trabalhadores: 0, limite: 0,
-        producao: 0, intervalo: 0, tempo_obra: 0, custo: 0, concluidas: 0, em_obra: 0,
+        fase: "aguardando", peixe: 0, salgado: 0, estragados: 0, pescadores: 0, limite: 0,
+        producao: 0, salga_por_ciclo: 0, intervalo: 0, prazo: 0,
+        concluidas: { barco: 0, salga: 0, cais: 0 }, em_obra: 0,
+        obras: [], predios: [], lotes: [], catalogo: {},
       });
       const avisos = ref([]);
       const eventos = ref([]);              // linha do tempo do painel de eventos
       const contadores = reactive({});      // quantas vezes cada evento ocorreu
       const ocultarProducao = ref(false);
+      const FREQUENTES = ["recurso.produzido", "pescado.salgado"];
       const eventosVisiveis = computed(() =>
-        eventos.value.filter((e) => !(ocultarProducao.value && e.nome === "recurso.produzido")));
-      const jogo = criarJogo();      // a vila desenhada (Phaser)
+        eventos.value.filter((e) => !(ocultarProducao.value && FREQUENTES.includes(e.nome))));
+      const jogo = criarJogo();      // o porto desenhado (Phaser)
       let socket = null;
 
       const porMinuto = computed(() =>
@@ -272,20 +306,32 @@
         Object.assign(estado, d.estado);   // copia o estado enviado pelo servidor
       }
 
-      // ----- painel de eventos (já pronto) -----
+      // Barra de validade de cada lote: o servidor diz quantos segundos faltam e a
+      // animação CSS encolhe a barra. Guardamos a duração na 1ª vez que o lote
+      // aparece, para a animação não recomeçar a cada evento.
+      const duracaoLote = {};
+      function estiloLote(l) {
+        if (!(l.id in duracaoLote)) duracaoLote[l.id] = l.restante;
+        return { animationDuration: duracaoLote[l.id] + "s" };
+      }
+
+      // ----- painel de eventos -----
       function resumir(d) {                // transforma os dados do evento em texto curto
         if (!d) return "";
         const { estado: e, causa, ...resto } = d;
         const partes = Object.entries(resto).map(([k, v]) => k + ": " + v);
-        if (e) partes.push("toras " + e.toras + ", trabalhadores " + e.trabalhadores + "/" + e.limite);
+        if (e) partes.push("peixe " + e.peixe + ", salgado " + e.salgado +
+                           ", pescadores " + e.pescadores + "/" + e.limite);
         return partes.join(" · ");
       }
       function registrar(sentido, nome, dados, reacao = "") {
-        const tipo = /_solicitad[ao]$/.test(nome) ? "pedido" : (nome === "operacao.recusada" ? "recusa" : "fato");
+        const tipo = /_solicitad[ao]$/.test(nome) ? "pedido"
+          : nome === "operacao.recusada" ? "recusa"
+          : nome === "pescado.estragado" ? "alerta" : "fato";
         contadores[nome] = (contadores[nome] || 0) + 1;
         eventos.value.unshift({ hora: new Date().toLocaleTimeString(), sentido: sentido, nome, tipo,
           causa: (dados && dados.causa) || "", dados: resumir(dados), reacao });
-        eventos.value = eventos.value.slice(0, 40);
+        eventos.value = eventos.value.slice(0, 60);
       }
 
       // OUVIR (on): registra o evento no painel e executa a reação do cliente
@@ -303,34 +349,31 @@
         socket = io({ auth: { nome: nome.value || "Anônimo", papel: p } });
         socket.on("connect", () => {
           conectado.value = true;
-          nextTick(() => jogo.iniciar("jogo"));   // a vila desenhada começa quando a tela aparece
+          nextTick(() => jogo.iniciar("jogo"));   // o porto desenhado começa quando a tela aparece
         });
 
         // ===== ESCUTAS (on): o cliente reage aos FATOS do servidor =====
-        // ouvir(evento, "o que o cliente faz ao receber", função)
-        // ETAPA 1: ouvir "estado.sincronizado"   -> jogo.mostrarEstado(...)
-        // ETAPA 2: ouvir "vila.iniciada"         -> jogo.vilaIniciada()
-        // ETAPA 3: ouvir "construcao.iniciada"   -> jogo.obraIniciada(...)
-        // ETAPA 4: ouvir "operacao.recusada"     -> jogo.recusado(...)
-        // ETAPA 5: ouvir "recurso.produzido"     -> jogo.recursoProduzido(...)
-        //          e "construcao.concluida"      -> jogo.obraConcluida(...)
-        // ETAPA 6: ouvir "vila.encerrada"        -> jogo.vilaEncerrada()
+
+        // Só este cliente recebe, logo ao entrar: é a "foto" do porto naquele momento.
+        ouvir("estado.sincronizado", "guarda o estado e desenha o porto como está", (d) => {
+          atualizar(d);
+          jogo.mostrarEstado(d.estado);
+        });
       }
 
       // ===== PEDIDOS (emit): o cliente PEDE algo ao servidor =====
-      // pedir(evento)
       function abrirVila() {
-        // ETAPA 2: pedir "vila.abertura_solicitada"
+        // ETAPA 2
       }
-      function construir() {
-        // ETAPA 3: pedir "construcao.solicitada"
+      function construir(tipo) {
+        // ETAPA 3
       }
       function encerrarVila() {
-        // ETAPA 6: pedir "vila.encerramento_solicitado"
+        // ETAPA 6
       }
 
       return { nome, papel, conectado, estado, avisos, eventosVisiveis, contadores, ocultarProducao, porMinuto,
-               entrar, abrirVila, construir, encerrarVila };
+               estiloLote, entrar, abrirVila, construir, encerrarVila };
     }
   }).mount("#app");
 </script>

@@ -259,3 +259,20 @@ async def obra(obra_id):
     await sio.emit("construcao.concluida",
                    fato("construcao.iniciada (temporizador)", por=o["por"], tipo=tipo,
                         obra=obra_id, efeito=CONSTRUCOES[tipo]["efeito"]))
+
+
+# ---------------------------------------------------------------------
+#  Mestre encerra a temporada
+# ---------------------------------------------------------------------
+@sio.on("vila.encerramento_solicitado")      # escuta o PEDIDO do Mestre
+async def encerrar_vila(sid, dados=None):
+    pedido = "vila.encerramento_solicitado"
+    if jogadores[sid]["papel"] != "mestre":
+        await recusar(sid, "Só o Mestre do porto pode encerrar a temporada", pedido)
+        return
+    if estado["fase"] != "aberta":
+        await recusar(sid, "A temporada de pesca não está aberta", pedido)
+        return
+    estado["fase"] = "encerrada"     # os relógios veem a fase e param sozinhos
+    # FATO para todos: novas ações passam a ser recusadas
+    await sio.emit("vila.encerrada", fato(pedido))

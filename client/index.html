@@ -432,6 +432,13 @@
           avisar(c.emoji + " " + c.nome + " de " + d.por + " concluído! " + d.efeito + ".", "ok");
           jogo.obraConcluida(d);
         });
+
+        // Todos recebem quando o Mestre encerra: o porto escurece e tudo para.
+        ouvir("vila.encerrada", "escurece o porto e congela os lotes", (d) => {
+          atualizar(d);
+          avisar("🌙 Temporada de pesca encerrada.");
+          jogo.vilaEncerrada();
+        });
       }
 
       // ===== PEDIDOS (emit): o cliente PEDE algo ao servidor =====
@@ -445,7 +452,8 @@
         pedir("construcao.solicitada", { tipo });
       }
       function encerrarVila() {
-        // ETAPA 6
+        // Pedido do Mestre para fechar a temporada.
+        pedir("vila.encerramento_solicitado");
       }
 
       return { nome, papel, conectado, estado, avisos, eventosVisiveis, contadores, ocultarProducao, porMinuto,

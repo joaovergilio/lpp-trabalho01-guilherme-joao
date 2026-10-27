@@ -366,6 +366,20 @@
           avisar("☀️ A temporada de pesca começou! Os barcos saíram para o mar.", "ok");
           jogo.vilaIniciada();
         });
+
+        // Todos recebem: um pedido de construção foi ACEITO pelo servidor.
+        ouvir("construcao.iniciada", "mostra o canteiro de obras no lugar da construção", (d) => {
+          atualizar(d);
+          const c = estado.catalogo[d.tipo];
+          avisar(d.por + " começou a construir " + c.emoji + " " + c.nome + " (" + c.tempo + " s)", "ok");
+          jogo.obraIniciada(d);
+        });
+
+        // Só quem pediu recebe: o servidor RECUSOU o pedido (e diz o motivo).
+        ouvir("operacao.recusada", "avisa o motivo e o porto treme", (d) => {
+          avisar("✋ " + d.motivo, "erro");
+          jogo.recusado(d.motivo);
+        });
       }
 
       // ===== PEDIDOS (emit): o cliente PEDE algo ao servidor =====
@@ -374,7 +388,9 @@
         pedir("vila.abertura_solicitada");
       }
       function construir(tipo) {
-        // ETAPA 3
+        // Pedido do Pescador com o tipo da construção. O cliente não confere
+        // estoque nem pescadores: quem valida é o servidor (fonte da verdade).
+        pedir("construcao.solicitada", { tipo });
       }
       function encerrarVila() {
         // ETAPA 6

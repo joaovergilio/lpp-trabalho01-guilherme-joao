@@ -122,3 +122,66 @@ async def abrir_vila(sid, dados=None):
     estado["fase"] = "aberta"
     # FATO para todos: a temporada começou
     await sio.emit("vila.iniciada", fato(pedido))
+
+
+# ---------------------------------------------------------------------
+#  Pedido e fato: construir (barco, salga ou cais)
+# ---------------------------------------------------------------------
+def consumir_peixe(qtd):
+    """Tira `qtd` peixes frescos do estoque, sempre dos lotes MAIS ANTIGOS.
+    Função comum (sem await): roda inteira antes de qualquer outro evento."""
+    usado = 0
+    while lotes and usado < qtd:
+        lote = lotes[0]
+        tira = min(lote["qtd"], qtd - usado)
+        lote["qtd"] -= tira
+        usado += tira
+        if lote["qtd"] == 0:
+            lotes.popleft()
+    estado["peixe"] -= qtd
+    return usado
+
+
+@sio.on("construcao.solicitada")             # escuta o PEDIDO do Pescador
+async def construir(sid, dados=None):
+    pedido = "construcao.solicitada"
+    tipo = (dados or {}).get("tipo")
+    regra = CONSTRUCOES.get(tipo)
+
+    # Valide TUDO antes de alterar o estado e SEM await no meio:
+    # assim, dois pedidos simultâneos são decididos um de cada vez (disputa).
+    if estado["fase"] != "aberta":
+        motivo = "A temporada de pesca não está aberta"
+    elif jogadores[sid]["papel"] != "jogador":
+        motivo = "Só o Pescador constrói"
+    elif regra is None:
+        motivo = "Construção desconhecida"
+    elif regra["recurso"] == "peixe" and estado["peixe"] < regra["custo"]:
+        motivo = f"Peixe fresco insuficiente (precisa de {regra['custo']})"
+    elif regra["recurso"] == "salgado" and estado["salgado"] < regra["custo"]:
+        motivo = f"Peixe salgado insuficiente (precisa de {regra['custo']})"
+    elif estado["pescadores"] >= estado["limite"]:
+        motivo = "Sem pescador livre"
+    else:
+        motivo = None
+
+    if motivo:
+        await recusar(sid, motivo, pedido)           # só quem pediu recebe
+        return
+
+    # pedido aceito: debita o custo, ocupa um pescador e abre a obra
+    if regra["recurso"] == "peixe":
+        consumir_peixe(regra["custo"])
+    else:
+        estado["salgado"] -= regra["custo"]
+    estado["pescadores"] += 1
+    obra_id = next(ids)
+    vaga = vagas[tipo]
+    vagas[tipo] += 1
+    nome = jogadores[sid]["nome"]
+    obras[obra_id] = {"tipo": tipo, "vaga": vaga, "por": nome, "fim": agora() + regra["tempo"]}
+
+    # FATO para todos: a obra começou (causa: o pedido deste jogador)
+    await sio.emit("construcao.iniciada",
+                   fato(pedido, por=nome, tipo=tipo, obra=obra_id, vaga=vaga,
+                        custo=regra["custo"], recurso=regra["recurso"]))

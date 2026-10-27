@@ -120,6 +120,9 @@ async def abrir_vila(sid, dados=None):
         await recusar(sid, "A temporada de pesca já foi aberta", pedido)
         return
     estado["fase"] = "aberta"
+    # o estoque inicial vira o 1º lote de pescado: o prazo dele começa agora
+    novo_lote(estado["peixe"], somar=False)
+    sio.start_background_task(pescaria)          # liga o relógio da pescaria
     # FATO para todos: a temporada começou
     await sio.emit("vila.iniciada", fato(pedido))
 
@@ -185,3 +188,74 @@ async def construir(sid, dados=None):
     await sio.emit("construcao.iniciada",
                    fato(pedido, por=nome, tipo=tipo, obra=obra_id, vaga=vaga,
                         custo=regra["custo"], recurso=regra["recurso"]))
+    sio.start_background_task(obra, obra_id)     # liga o relógio desta obra
+
+
+# ---------------------------------------------------------------------
+#  A passagem do tempo: temporizadores do servidor são FONTES DE EVENTOS
+#  (ninguém clica; o servidor emite sozinho e os clientes só escutam)
+# ---------------------------------------------------------------------
+def novo_lote(qtd, somar=True):
+    """Um lote de peixe fresco chega ao porto e começa a contar o prazo."""
+    lote = {"id": next(ids), "qtd": qtd, "vence": agora() + PRAZO_PESCADO}
+    lotes.append(lote)
+    if somar:
+        estado["peixe"] += qtd
+    sio.start_background_task(prazo_do_lote, lote)   # relógio do prazo deste lote
+    return lote
+
+
+async def pescaria():
+    """Relógio da produção: a cada INTERVALO os barcos voltam com peixe."""
+    while estado["fase"] == "aberta":
+        await sio.sleep(INTERVALO)                   # sio.sleep não trava o servidor
+        if estado["fase"] != "aberta":
+            break
+        qtd = estado["producao"]
+        novo_lote(qtd)
+        # FATO para todos: chegou a pescaria (causa: o temporizador)
+        await sio.emit("recurso.produzido", fato("temporizador da pescaria", pescado=qtd))
+
+        # encadeamento: a chegada do peixe dispara a salga (refino)
+        if estado["fase"] == "aberta" and estado["salga_por_ciclo"] and estado["peixe"]:
+            qtd_sal = min(estado["salga_por_ciclo"], estado["peixe"])
+            consumir_peixe(qtd_sal)                  # salga os lotes mais antigos primeiro
+            estado["salgado"] += qtd_sal
+            await sio.emit("pescado.salgado",
+                           fato("recurso.produzido (temporizador)", qtd=qtd_sal))
+
+
+async def prazo_do_lote(lote):
+    """Relógio do que EXPIRA: o pescado estraga se não for salgado a tempo."""
+    await sio.sleep(PRAZO_PESCADO)
+    if estado["fase"] != "aberta" or lote not in lotes or lote["qtd"] == 0:
+        return                                       # já foi salgado/usado ou a temporada acabou
+    qtd = lote["qtd"]
+    lotes.remove(lote)
+    estado["peixe"] -= qtd
+    estado["estragados"] += qtd
+    # FATO para todos: o lote venceu sem salga
+    await sio.emit("pescado.estragado",
+                   fato("recurso.produzido (prazo do lote)", qtd=qtd, lote=lote["id"]))
+
+
+async def obra(obra_id):
+    """Relógio da obra: termina sozinha depois do tempo da construção."""
+    tipo = obras[obra_id]["tipo"]
+    await sio.sleep(CONSTRUCOES[tipo]["tempo"])
+    if estado["fase"] != "aberta":
+        return                                       # temporada encerrada: a obra não termina
+    o = obras.pop(obra_id)
+    estado["pescadores"] -= 1                        # o pescador fica livre
+    estado["concluidas"][tipo] += 1
+    predios.append({"tipo": tipo, "vaga": o["vaga"]})
+    if tipo == "barco":
+        estado["producao"] += 5
+    elif tipo == "salga":
+        estado["salga_por_ciclo"] += 8
+    elif tipo == "cais":
+        estado["limite"] += 1
+    # FATO para todos: a obra terminou (causa: a obra iniciada + o temporizador)
+    await sio.emit("construcao.concluida",
+                   fato("construcao.iniciada (temporizador)", por=o["por"], tipo=tipo,
+                        obra=obra_id, efeito=CONSTRUCOES[tipo]["efeito"]))

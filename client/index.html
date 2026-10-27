@@ -405,6 +405,33 @@
           avisar("✋ " + d.motivo, "erro");
           jogo.recusado(d.motivo);
         });
+
+        // Todos recebem, sem ninguém clicar: o TEMPORIZADOR da pescaria trouxe peixe.
+        ouvir("recurso.produzido", "atualiza o peixe fresco, mostra o novo lote e o +N", (d) => {
+          atualizar(d);
+          jogo.recursoProduzido(d);
+        });
+
+        // Todos recebem: encadeado na pescaria, as salgas transformaram peixe fresco.
+        ouvir("pescado.salgado", "atualiza o peixe salgado e mostra o +N 🧂 na salga", (d) => {
+          atualizar(d);
+          jogo.pescadoSalgado(d);
+        });
+
+        // Todos recebem: o prazo de um lote venceu sem salga (o que expira).
+        ouvir("pescado.estragado", "remove o lote vencido e avisa a perda", (d) => {
+          atualizar(d);
+          avisar("🪰 " + d.qtd + " peixes estragaram sem salga!", "alerta");
+          jogo.pescadoEstragado(d);
+        });
+
+        // Todos recebem: o temporizador da obra terminou e o pescador ficou livre.
+        ouvir("construcao.concluida", "troca o canteiro pela construção pronta", (d) => {
+          atualizar(d);
+          const c = estado.catalogo[d.tipo];
+          avisar(c.emoji + " " + c.nome + " de " + d.por + " concluído! " + d.efeito + ".", "ok");
+          jogo.obraConcluida(d);
+        });
       }
 
       // ===== PEDIDOS (emit): o cliente PEDE algo ao servidor =====

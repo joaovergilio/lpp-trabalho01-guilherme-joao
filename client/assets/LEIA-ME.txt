@@ -1,0 +1,25 @@
+ASSETS DA VILA
+==============
+
+Arte original criada para este trabalho (uso livre nos trabalhos da disciplina).
+
+tileset-vila.png   peças do cenário, 16x16 px (64 peças, 16 por linha)
+sprites-vila.png   casa (quadro 0) e canteiro de obras (quadro 1), 32x32 px
+vila.json          o mapa (formato Tiled), 18 x 9 peças. Abra no Tiled para editar.
+
+PEÇAS DO TILESET (número mostrado no Tiled)
+  0, 1, 2     grama (lisa, com tufos, com flores)
+  8 a 23      CAMINHO. Número = 8 + soma dos lados em que há mais caminho:
+              Norte=1, Leste=2, Sul=4, Oeste=8
+              ex.: 8 = caminho isolado | 18 = reto horizontal (L+O) |
+                   13 = reto vertical (N+S) | 23 = cruzamento
+  24 a 39     ÁGUA. Mesma regra: 24 + soma dos lados com mais água
+              ex.: 39 = água por dentro da lagoa | 24 = poça isolada
+  40 árvore   41 arbusto   42 pedra   43 toco
+  44 toras    45 horta de cenoura   46 horta de trigo   47 cerca
+
+CAMADAS DO MAPA
+  chao         grama, caminho e água (todas as células preenchidas)
+  decoracao    árvores, pedras, hortas, cerca (células vazias onde não há nada)
+  pontos       (objetos) lote1 a lote6 = onde aparecem obras e casas
+                          acampamento = de onde sobem os "+10"

@@ -1,6 +1,6 @@
 # Especificação — Porto de Pesca em Tempo Real
 
-**Integrantes:** Guilherme Losi (@usuario-github-guilherme) e João Vitor Vergilio (@usuario-github-joao)
+**Integrantes:** Guilherme Losi (@guilhermelosi-lab) e João Vitor Vergilio (@joaovergilio)
 **Tipo de vila (sorteio):** 4 — Porto de pesca (peixe → peixe salgado; cais, salga e barco; pescadores; o pescado estraga sem salga)
 
 > Documento escrito antes do código. Descreve o comportamento na linguagem do porto, sem citar tecnologia.

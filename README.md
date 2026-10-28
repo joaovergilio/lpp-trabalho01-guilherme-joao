@@ -4,8 +4,8 @@ Trabalho 01 de Linguagem de Programação e Paradigmas (2026/2), Programação O
 **Tipo de vila (sorteio): 4, Porto de pesca.** O peixe fresco vira peixe salgado; as construções são barco, salga e cais; os trabalhadores são pescadores; e o pescado estraga se não for salgado a tempo.
 
 ## Integrantes
-- Guilherme Losi: @usuario-github-guilherme
-- João Vitor Vergilio: @usuario-github-joao
+- Guilherme Losi: @guilhermelosi-lab
+- João Vitor Vergilio: @joaovergilio
 
 ## Linguagem e bibliotecas
 - **Servidor:** Python 3 com `python-socketio` e `uvicorn`. O estado fica só na memória.
@@ -81,8 +81,8 @@ O cliente nunca pergunta se algo mudou. Toda mudança de estado acontece no serv
 
 ## Uso de IA
 Usamos o **Claude (Anthropic)** como apoio para escrever a especificação, o código do servidor e do cliente a partir do Kit Inicial e do Guia de Implementação, as peças de pixel art do porto (geradas por script) e este README.
-**O que mudamos / revisamos:** _(completar: o que vocês testaram, ajustaram ou reescreveram)_.
-Os dois integrantes revisaram o código e sabem explicar cada evento: quem emite, quem escuta e o que muda no estado.
+**O que mudamos / revisamos:** não alteramos a lógica do código gerado. Nossa parte foi conferir se a implementação seguia o enunciado, o Guia de Implementação e o nosso tipo de vila (Porto de pesca), testar o sistema com várias abas abertas (Mestre e dois Pescadores) seguindo os cenários da especificação, completar os dados dos integrantes e publicar o repositório. Também estudamos o código para entender cada evento: quem emite, quem escuta e o que muda no estado.  
+
 
 ## Extras
 - **Recurso refinado:** 🧂 peixe salgado, produzido pela salga a partir do peixe fresco e usado para pagar o cais.
